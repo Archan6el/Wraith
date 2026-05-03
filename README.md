@@ -11,6 +11,6 @@ This allows the agent to read / parse inbound traffic, even if there's a host ba
 
 The Wraith agent can pick up both TCP and UDP traffic
 
-Again, shoutout to Khael, I basically just wrote my own version of [PhantomShell](https://github.com/KhaelK138/PhantomShell) from the ground up. PhantomShell is a million times better
+Again, shoutout to Khael, I basically just wrote my own version of [PhantomShell](https://github.com/KhaelK138/PhantomShell) from the ground up. PhantomShell is a million times better though, use that instead
 
 Still a work in progress
