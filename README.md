@@ -2,7 +2,7 @@
 
 ## Background
 
-Just some C implant inspired by Khael's [PhantomShell](https://github.com/KhaelK138/PhantomShell) so that I can learn
+Just some C implant inspired by [Khael's](https://github.com/KhaelK138) [PhantomShell](https://github.com/KhaelK138/PhantomShell) so that I can learn
 more about C networking and packets on raw sockets and whatnot. This tool is primarily educational, but I may use it when red teaming for attack / defense competitions, who knows
 
 The Wraith agent listens on a `PF_PACKET` raw socket, allowing it to capture and inspect Ethernet-level traffic arriving to the host before it is processed by standard TCP/UDP socket layers, essentially like a network / packet sniffer
@@ -11,6 +11,6 @@ This allows the agent to read / parse inbound traffic, even if there's a host ba
 
 The Wraith agent can pick up both TCP and UDP traffic
 
-Again, shoutout to Khael, I basically just wrote my own version of [PhantomShell](https://github.com/KhaelK138/PhantomShell) from the ground up. PhhantomShell is a million times better
+Again, shoutout to Khael, I basically just wrote my own version of [PhantomShell](https://github.com/KhaelK138/PhantomShell) from the ground up. PhantomShell is a million times better
 
 Still a work in progress
