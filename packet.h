@@ -8,6 +8,7 @@
 
 #define CMD_PING 0x01
 #define CMD_EXEC_BLIND 0x02
+#define CMD_EXEC 0x03
 
 struct packet_header {
     uint32_t magic;

