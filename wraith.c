@@ -244,7 +244,7 @@ int parse_payload(char* payload, int payload_len, int source_address) {
 
 int main() {
 
-    // PF_PACKET and SOCK_RAW delivers raw ethernet network frames before IP/TCP processing
+    // PF_PACKET and SOCK_RAW picks up raw ethernet network frames (layer 2) before IP/TCP processing
     // ETH_P_IP filters for only IPv4
     // Some more detail here https://man7.org/linux/man-pages/man7/packet.7.html
     int socket_fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_IP));
