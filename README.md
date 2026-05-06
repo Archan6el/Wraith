@@ -15,7 +15,7 @@ Again, shoutout to Khael, I basically just wrote my own version of [PhantomShell
 
 ## Setup
 
-Run the `wraith` agent on the victim device. Must be running with `sudo` permissions in order to listen on the raw socket with `PF_PACKET`
+Run the `wraith` agent on the victim machine. Do note that the `wraith` agent only works on Linux boxes, and must be running with `sudo` permissions in order to listen on the raw socket with `PF_PACKET`
 
 Use `wraithshell.py` from your attack box to interact with remote `Wraith` agents
 
@@ -36,7 +36,7 @@ You can now run `wraithshell.py`. Do note that this also requires sudo privilege
 
 ## Usage
 
-In `wraithshell.py` just run `help` to see all available commands, then run `help <command>` to see details on that specific command
+In `wraithshell.py` run `help` to see all available commands. Run `help <command>` to see details on a specific command
 
 Current commands so far are listed below
 
