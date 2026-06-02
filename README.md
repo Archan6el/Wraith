@@ -15,10 +15,6 @@ Again, shoutout to Khael, I basically just wrote my own version of [PhantomShell
 
 ## Setup
 
-Run the `wraith` agent on the victim machine. Do note that the `wraith` agent only works on Linux boxes, and must be running with `sudo` permissions in order to listen on the raw socket with `PF_PACKET`
-
-Use `wraithshell.py` from your attack box to interact with remote `Wraith` agents
-
 I recommend creating and using a python virtual environment
 
 ```
@@ -26,22 +22,38 @@ python3 -m venv env
 source env/bin/activate
 ```
 
-Then install requirements
+Once your virtual environment is made, install requirements
 
 ```
 pip install -r requirements.txt
 ```
 
-You can now run `wraithshell.py`. Do note that this also requires sudo privileges
+You can now run `wraithshell.py`
 
 ## Usage
 
-In `wraithshell.py` run `help` to see all available commands. Run `help <command>` to see details on a specific command
+Run the `wraith` agent on the victim machine. Do note that the `wraith` agent only works on Linux boxes, and must be running with `sudo` permissions in order to listen on the raw socket with `PF_PACKET`
+
+Use `wraithshell.py` from your attack box to interact with remote `wraith` agents via the Wraith shell. This also requires `sudo` permissions
+
+### Specifics
+
+A Makefile is provided for simple compilation of the Wraith agent. Just run
+
+```
+make compile
+```
+
+Then move and run the compiled `wraith` binary on the victim machine of your choice
+
+To interact with the running `wraith` agent, run `wraithshell.py` to start the Wraith shell
+
+In the Wraith shell run `help` to see all available commands. Run `help <command>` to see details on a specific command
 
 Current commands so far are listed below
 
 ```
-target - Set the IP and port (Specific port is optional, defaults to random port) of the vicitm machine
+target - Set the IP and port (Specific port is optional, defaults to random port) of the victim machine
 
 exec - Send commands for the remote agent to execute on the victim machine. Can execute blind for no returned output
 
