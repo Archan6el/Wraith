@@ -203,6 +203,10 @@ int parse_payload(char* payload, int payload_len, int source_address) {
     memcpy(&incoming.cmd_len, match + 2*sizeof(uint32_t), sizeof(uint32_t));
     incoming.cmd_len = ntohl(incoming.cmd_len);
 
+    if (incoming.cmd_len == UINT32_MAX) {
+        return 1;
+    }
+
     // Get actual command
     command = calloc(1, incoming.cmd_len + 1);
     memcpy(command, match + 3*sizeof(uint32_t), incoming.cmd_len);
