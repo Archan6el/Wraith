@@ -64,5 +64,7 @@ listener - Start and stop local listener (used to receive pings and command outp
 
 ping - Have remote Wraith agent on victim machine ping the local machine
 
+mass - Send commands to multiple hosts based on an IP list file (see `example_IP_list.txt` for format)
+
 protocol - Switch between sending tcp or udp packets
 ```
