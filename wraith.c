@@ -208,7 +208,7 @@ int parse_payload(char* payload, int payload_len, int source_address) {
     }
 
     // Get actual command
-    command = calloc(1, incoming.cmd_len + 1);
+    command = calloc(incoming.cmd_len + 1, sizeof(char));
     memcpy(command, match + 3*sizeof(uint32_t), incoming.cmd_len);
     command[incoming.cmd_len] = '\0'; // Null terminate
 
