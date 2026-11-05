@@ -50,11 +50,13 @@ def parse_IP_file(file_path):
         with open(file_path, "r") as file:
             for line in file:
                 
-                # Skip comments
-                if line.strip()[0] == "#":
-                    continue 
+                line = line.strip()
 
-                IP_list.append(line.strip().replace(" ", ""))
+                # Skip blank lines and comments
+                if not line or line.startswith("#"):
+                    continue
+
+                IP_list.append(line.replace(" ", ""))
 
     except Exception as e:
         print(f"Error: {e}")
