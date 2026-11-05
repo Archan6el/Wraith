@@ -268,6 +268,7 @@ class WraithShell(cmd.Cmd):
 
         if len(args) < 1:
             print(self.do_mass.__doc__)
+            return
 
 
         match args[0].strip().lower():
