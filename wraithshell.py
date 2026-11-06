@@ -86,7 +86,7 @@ class WraithShell(cmd.Cmd):
     def __init__(self):
         super().__init__()
         self.target_IP = None
-        self.target_port = None
+        self.target_port = 9999
         self.current_protocol = "TCP"
         self.sender_wrapper = send_packet_TCP
         self.stop_listener = None
@@ -136,7 +136,7 @@ class WraithShell(cmd.Cmd):
         server.listen(10)  # backlog
 
         stop_event = threading.Event()
-        
+
         def _accept_loop():
             server.settimeout(1.0)
             while not stop_event.is_set():
