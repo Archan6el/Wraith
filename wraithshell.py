@@ -107,55 +107,50 @@ class WraithShell(cmd.Cmd):
             return False
         return True
 
-    # Helper function for listener
+    def _handle_connection(self, conn, addr):
+
+        output = b""
+        while True:
+            chunk = conn.recv(4096)
+            if not chunk:
+                break
+            output += chunk
+        conn.close()
+
+        message = output.decode(errors="replace").strip().lower()
+        if message == "pong":
+            print(f"\n[+] Pong received from {addr[0]}")
+        else:
+            sys.stdout.write('\r\033[K')
+            print(f"\n[+] Incoming response from {addr[0]}")
+            print("==================================================")
+            print(message)
+            print("==================================================\n")
+            sys.stdout.flush()
+
     def _start_listener(self):
 
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind(("0.0.0.0", C2_PORT))
-        server.listen(1)
+        server.listen(10)  # backlog
 
         stop_event = threading.Event()
-
+        
         def _accept_loop():
-            
-            server.settimeout(1.0) 
+            server.settimeout(1.0)
             while not stop_event.is_set():
-                
                 try:
                     conn, addr = server.accept()
                 except socket.timeout:
-                    continue  # loop back and check stop_event
+                    continue
                 except OSError:
-                    break     # socket was closed externally
+                    break
 
-                output = b""
-                while True:
-                    chunk = conn.recv(4096)
-                    if not chunk:
-                        break
-                    output += chunk
-                conn.close()
+                # Spawn a thread per connection instead of handling inline
+                t = threading.Thread(target=self._handle_connection, args=(conn, addr), daemon=True)
+                t.start()
 
-                message = output.decode(errors="replace").strip().lower()
-                if message == "pong":
-                    print(f"[+] Pong received from {addr[0]}")
-                else:
-                    # Clear current input line
-                    sys.stdout.write('\r\033[K') 
-
-                    print(f"\n[+] Incoming response from {addr[0]}")
-                    print("==================================================")
-                    print(message)
-
-                    #sys.stdout.write(self.prompt)
-
-                    print("==================================================\n")
-
-                    # Flush stdout
-                    sys.stdout.flush()
-
-        # Thread the accept loop
         t = threading.Thread(target=_accept_loop, daemon=True)
         t.start()
 
