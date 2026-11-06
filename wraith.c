@@ -217,7 +217,7 @@ int parse_payload(char* payload, int payload_len, int source_address) {
 
         // Handle ping
         case CMD_PING:
-            //printf("Handling ping\n");
+            printf("Handling ping\n");
             send_ping(source_address); 
             break;
         
@@ -236,10 +236,10 @@ int parse_payload(char* payload, int payload_len, int source_address) {
     
 
     // Debug printing
-    // printf("MAGIC FOUND: %x\n", incoming.magic);
-    // printf("Command Type: %x\n", incoming.command);
-    // printf("Command Length: %d\n", incoming.cmd_len);
-    // printf("Actual command: %s\n", command);
+    printf("MAGIC FOUND: %x\n", incoming.magic);
+    printf("Command Type: %x\n", incoming.command);
+    printf("Command Length: %d\n", incoming.cmd_len);
+    printf("Actual command: %s\n", command);
 
     free(command);
 
