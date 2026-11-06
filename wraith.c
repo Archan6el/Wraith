@@ -15,6 +15,7 @@ more about C networking and packets on raw sockets and whatnot
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 #include <sys/socket.h>
+#include <netinet/ip_icmp.h>
 #include "packet.h" // Custom packet values defined
 
 // Send a ping
