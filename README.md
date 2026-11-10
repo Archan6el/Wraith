@@ -12,7 +12,7 @@ In other words, the agent can observe commands sent to the host on arbitrary des
 
 > Do note that the Wraith agent seeing traffic despite a firewall does depend on where exactly in the network stack the firewall begins filtering. In many common configurations, packets may still be observable at the `PF_PACKET` layer (layer 2) even if they are later dropped, but this is not guaranteed in all environments
 
-The Wraith agent additionally can pick up both TCP and UDP traffic
+The Wraith agent additionally can pick up TCP, UDP, and ICMP traffic
 
 Again, shoutout to Khael, I basically just wrote my own version of [PhantomShell](https://github.com/KhaelK138/PhantomShell) from the ground up. PhantomShell is a million times better though, use that instead
 
